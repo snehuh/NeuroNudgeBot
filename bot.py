@@ -224,6 +224,71 @@ def initialize_user_fields():
         }
     )
 
+# Command: /status
+async def show_status(update: Update, context: CallbackContext):
+    user = update.effective_user
+    username = get_username_safe(user)
+    user_doc = users_collection.find_one({"username": username})
+
+    if not user_doc:
+        await update.message.reply_text("You are not registered. Please use /start to begin.")
+        return
+
+    study = user_doc.get("study_type", "general")
+    freq = user_doc.get("nudge_frequency", (5, 30))
+    mode = user_doc.get("nudge_mode", "default")
+    custom_count = len(user_doc.get("custom_messages", []))
+
+    await update.message.reply_text(
+        f"📊 *Your Settings:*"
+        f"✨ Study Type: `{study}`"
+        f"⏰ Frequency: `{freq[0]}-{freq[1]} mins`"
+        f"🔹 Nudge Mode: `{mode}`"
+        f"📄 Custom Messages: `{custom_count}`",
+        parse_mode="Markdown"
+    )
+
+# Updated /startnudges to show message immediately
+async def start_nudges(update: Update, context: CallbackContext):
+    user = update.effective_user
+    username = get_username_safe(user)
+    chat_id = update.message.chat_id
+
+    user_doc = users_collection.find_one({"username": username})
+    if not user_doc:
+        await update.message.reply_text("User not found. Please use /start first.")
+        return
+
+    _, nudge_frequency = user_doc.get("study_type", "general"), user_doc.get("nudge_frequency", (5, 30))
+    min_time, max_time = nudge_frequency
+    delay = random.randint(min_time, max_time) * 60
+
+    # Register future nudges
+    context.job_queue.run_repeating(
+        send_nudge, interval=delay, first=5, chat_id=chat_id,
+        name=str(chat_id), data={"username": username}
+    )
+
+    # Send first nudge immediately
+    study_type = user_doc.get("study_type", "general")
+    mode = user_doc.get("nudge_mode", "default")
+    custom_msgs = user_doc.get("custom_messages", [])
+
+    messages = []
+    if mode == "custom" and custom_msgs:
+        messages = custom_msgs
+    elif mode == "mixed" and custom_msgs:
+        messages = STUDY_MESSAGES[study_type] + custom_msgs
+    else:
+        messages = STUDY_MESSAGES[study_type]
+
+    first_nudge = random.choice(messages) if messages else "Let's get started with a study session!"
+
+    await update.message.reply_text(
+        f"✅ Nudges activated! Frequency: {min_time}-{max_time} mins"
+        f"NeuroNudge says: {first_nudge} 🚀"
+    )
+
 def main():
     initialize_user_fields()
     app = Application.builder().token(TOKEN).build()
@@ -236,6 +301,8 @@ def main():
     app.add_handler(CallbackQueryHandler(handle_frequency_choice, pattern="^freq_"))
     app.add_handler(CommandHandler("setnudgemode", set_nudge_mode))
     app.add_handler(CallbackQueryHandler(handle_nudge_mode_choice, pattern="^nudge_"))
+    app.add_handler(CommandHandler("status", show_status))
+    app.add_handler(CommandHandler("startnudges", start_nudges))
     app.add_handler(CommandHandler("addnudge", add_nudge))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, save_custom_nudge))
 
