@@ -267,8 +267,12 @@ async def start_nudges(update: Update, context: CallbackContext):
     # Schedule the nudges to repeat with random delay
     delay = random.randint(min_time, max_time) * 60
     context.job_queue.run_repeating(
-        send_nudge, interval=delay, first=5, chat_id=chat_id,
-        name=str(chat_id), data={"username": username}
+        send_nudge, 
+        interval=delay, 
+        first=delay, 
+        chat_id=chat_id,
+        name=str(chat_id), 
+        data={"username": username}
     )
 
     # Prepare the first nudge message immediately
