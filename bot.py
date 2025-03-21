@@ -217,10 +217,6 @@ def initialize_user_fields():
     users_collection.update_many(
         {},
         {
-            "$setOnInsert": {
-                "custom_messages": [],
-                "nudge_mode": "default"
-            },
             "$set": {
                 "custom_messages": [],
                 "nudge_mode": "default"
