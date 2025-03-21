@@ -2,7 +2,7 @@ import os
 import asyncio
 import random
 import logging
-from datetime import datetime, time
+from datetime import datetime, time, timedelta, timezone
 from dotenv import load_dotenv
 from telegram import Bot
 
@@ -42,9 +42,13 @@ NUDGES = [
 START_HOUR = 9
 END_HOUR = 17
 
+# Define timezone offset for Singapore (UTC+8)
+SGT_OFFSET = timedelta(hours=8)
+
 def within_active_hours():
-    now = datetime.now().time()
-    return time(START_HOUR, 0) <= now <= time(END_HOUR, 0)
+    now_utc = datetime.now(timezone.utc)
+    now_sgt = now_utc + SGT_OFFSET
+    return time(9, 0) <= now_sgt.time() <= time(17, 0)  # Active 9 AM - 5 PM SGT
 
 async def send_nudge():
     message = random.choice(NUDGES)
