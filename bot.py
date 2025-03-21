@@ -1,284 +1,194 @@
 import os
-import asyncio
 import random
 import logging
-from datetime import datetime, time, timedelta, timezone
-from dotenv import load_dotenv
-from telegram import Bot, Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, CallbackContext
-
-# Load environment variables
-load_dotenv()
-
-# Get environment variables
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-
-# Initialize the bot
-bot = Bot(token=TELEGRAM_BOT_TOKEN)
-app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
-
-# Set up logging to file
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(message)s',
-    handlers=[
-        logging.FileHandler("neuronudgebot.log"),
-        logging.StreamHandler()
-    ]
-)
-
-# Store subscribed users and their nudge frequency range
-SUBSCRIBED_USERS = {}  # Format: {user_id: (first_name, min_frequency, max_frequency, study_topic, custom_nudges)}
-#DEFAULT_MIN_FREQUENCY = 300   # 5 minutes
-#DEFAULT_MAX_FREQUENCY = 1800  # 30 minutes
-DEFAULT_MIN_FREQUENCY = 60   # 1 MINUTE FOR TESTING
-DEFAULT_MAX_FREQUENCY = 180  # 3 minutes FOR TESTING
-
-# Default nudge messages
-DEFAULT_NUDGES = {
-    "general": [
-        "Hey {name}! Have you reviewed your study material today? 📚",
-        "Reminder: Small, consistent efforts lead to big results! 💡",
-        "Keep going! Stay focused on your goals 🚀",
-        "Ping! Let’s get one thing done for your future self 👩‍💻"
-    ],
-    "cybersecurity": [
-        "Hey {name}! Have you reviewed a TryHackMe room today? 🕵️‍♀️",
-        "Reminder: CCNA and Security+ won't study themselves 😅",
-        "Time to flex those cyber muscles 💪 Hack something small today!",
-        "Don't forget to update your cybersecurity portfolio 🧠"
-    ]
-}
-
-# Define timezone offset for Singapore (UTC+8)
-SGT_OFFSET = timedelta(hours=8)
-
-def within_active_hours():
-    now_utc = datetime.now(timezone.utc)
-    now_sgt = now_utc + SGT_OFFSET
-    return time(9, 0) <= now_sgt.time() <= time(17, 0)
-
-async def send_nudge():
-    if not SUBSCRIBED_USERS:
-        logging.info("No subscribed users. Skipping nudge.")
-        return
-    
-    for user_id, (first_name, min_freq, max_freq, study_topic, custom_nudges) in SUBSCRIBED_USERS.items():
-        if custom_nudges:
-            message = random.choice(custom_nudges)
-        else:
-            message = random.choice(DEFAULT_NUDGES.get(study_topic, DEFAULT_NUDGES["general"])).format(name=first_name)
-        
-        try:
-            await bot.send_message(chat_id=user_id, text=message)
-            logging.info(f"Sent nudge to {first_name} ({user_id}): {message}")
-        except Exception as e:
-            logging.error(f"Failed to send nudge to {first_name} ({user_id}): {e}")
-
-async def run_nudger():
-    while True:
-        if within_active_hours():
-            for user_id, (_, min_freq, max_freq, _, _) in SUBSCRIBED_USERS.items():
-                await send_nudge()
-                wait_time = random.randint(min_freq, max_freq)
-                logging.info(f"Next nudge for {user_id} in {wait_time // 60} minutes.")
-                await asyncio.sleep(wait_time)
-        else:
-            logging.info("Outside active hours. Sleeping for 30 minutes.")
-            await asyncio.sleep(1800)  # Sleep for 30 mins
-
-# Telegram Command Handlers
-async def start(update: Update, context: CallbackContext):
-    user_id = update.message.chat_id
-    first_name = update.message.chat.first_name
-    SUBSCRIBED_USERS[user_id] = (first_name, DEFAULT_MIN_FREQUENCY, DEFAULT_MAX_FREQUENCY, "general", [])
-    await update.message.reply_text(f"🚀 NeuroNudge Bot activated! Welcome, {first_name}! You'll now receive study nudges between 9AM-5PM SGT every 5-30 mins.")
-    logging.info(f"User {first_name} ({user_id}) subscribed with default settings.")
-
-async def stop(update: Update, context: CallbackContext):
-    user_id = update.message.chat_id
-    if user_id in SUBSCRIBED_USERS:
-        first_name = SUBSCRIBED_USERS[user_id][0]
-        del SUBSCRIBED_USERS[user_id]
-        await update.message.reply_text("❌ You've unsubscribed from NeuroNudge nudges. Type /start to re-enable.")
-        logging.info(f"User {first_name} ({user_id}) unsubscribed.")
-
-async def set_study_topic(update: Update, context: CallbackContext):
-    user_id = update.message.chat_id
-    first_name = update.message.chat.first_name
-    
-    if len(context.args) != 1:
-        await update.message.reply_text("⚙️ Usage: /settopic <topic>. Example: /settopic cybersecurity")
-        return
-    
-    study_topic = context.args[0].lower()
-    SUBSCRIBED_USERS[user_id] = (first_name, *SUBSCRIBED_USERS[user_id][1:3], study_topic, [])
-    
-    await update.message.reply_text(f"✅ {first_name}, you've set your study focus to {study_topic}.")
-    logging.info(f"User {first_name} ({user_id}) set study topic to {study_topic}.")
-
-async def add_custom_nudge(update: Update, context: CallbackContext):
-    user_id = update.message.chat_id
-    if len(context.args) < 1:
-        await update.message.reply_text("⚙️ Usage: /addnudge <your custom nudge>")
-        return
-    
-    custom_nudge = " ".join(context.args)
-    SUBSCRIBED_USERS[user_id][4].append(custom_nudge)
-    await update.message.reply_text("✅ Your custom nudge has been added!")
-
-# Add handlers
-app.add_handler(CommandHandler("start", start))
-app.add_handler(CommandHandler("stop", stop))
-app.add_handler(CommandHandler("settopic", set_study_topic))
-app.add_handler(CommandHandler("addnudge", add_custom_nudge))
-
-if __name__ == "__main__":
-    logging.info("NeuroNudgeBot started.")
-    app.run_polling()
-    asyncio.run(run_nudger())
-import os
 import asyncio
-import random
-import logging
-from datetime import datetime, time, timedelta, timezone
-from dotenv import load_dotenv
+from datetime import datetime, timezone, timedelta
 from pymongo import MongoClient
-from telegram import Bot, Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, CallbackContext, CallbackQueryHandler
+from dotenv import load_dotenv
+from telegram import Update
+from telegram.ext import (
+    Application, CommandHandler, CallbackContext
+)
 
 # Load environment variables
 load_dotenv()
+TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+MONGO_URI = os.getenv("MONGODB_URI")
 
-# Get environment variables securely
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-MONGODB_URI = os.getenv("MONGODB_URI")
-
-if not TELEGRAM_BOT_TOKEN or not MONGODB_URI:
-    raise ValueError("Missing TELEGRAM_BOT_TOKEN or MONGODB_URI. Check your .env file.")
-
-# Initialize the bot securely
-bot = Bot(token=TELEGRAM_BOT_TOKEN)
-app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
-
-# Set up logging securely
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(message)s',
-    handlers=[
-        logging.FileHandler("neuronudgebot.log", mode='a', encoding='utf-8'),
-        logging.StreamHandler()
-    ]
-)
-
-# Connect to MongoDB
-client = MongoClient(MONGODB_URI)
+# MongoDB Setup
+client = MongoClient(MONGO_URI)
 db = client["neuronudgebot"]
 users_collection = db["users"]
 
-# Default nudge messages
-DEFAULT_NUDGES = {
+# Logging Setup
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+
+# Default study messages
+STUDY_MESSAGES = {
     "general": [
-        "Hey {name}! Have you reviewed your study material today? 📚",
-        "Reminder: Small, consistent efforts lead to big results! 💡",
-        "Keep going! Stay focused on your goals 🚀",
-        "Ping! Let’s get one thing done for your future self 👩‍💻"
+        "Stay focused! Take a deep breath and keep learning. 📚",
+        "Small progress is still progress. Keep going! 🚀",
+        "Your efforts today will pay off in the future! 🔥",
     ],
     "cybersecurity": [
-        "Hey {name}! Have you reviewed a TryHackMe room today? 🕵️‍♀️",
-        "Reminder: CCNA and Security+ won't study themselves 😅",
-        "Time to flex those cyber muscles 💪 Hack something small today!",
-        "Don't forget to update your cybersecurity portfolio 🧠"
-    ]
+        "Time for a security challenge! Try solving one now. 🔓",
+        "Think like a hacker, defend like a pro! 🛡️",
+        "Cybersecurity is a mindset. Stay sharp! 💻",
+    ],
 }
 
-# Define timezone offset for Singapore (UTC+8)
-SGT_OFFSET = timedelta(hours=8)
+# Define active hours
+SGT = timezone(timedelta(hours=8))
+ACTIVE_HOURS = (9, 17)  # 9 AM - 5 PM SGT
 
-def within_active_hours():
-    now_utc = datetime.now(timezone.utc)
-    now_sgt = now_utc + SGT_OFFSET
-    return time(9, 0) <= now_sgt.time() <= time(17, 0)
 
-def get_user(user_id):
-    return users_collection.find_one({"user_id": user_id})
-
-def save_user(user_id, first_name, study_topic="general", min_freq=300, max_freq=1800, custom_nudges=[]):
-    users_collection.update_one(
-        {"user_id": user_id},
-        {"$set": {
-            "first_name": first_name,
-            "study_topic": study_topic,
-            "min_freq": min_freq,
-            "max_freq": max_freq,
-            "custom_nudges": custom_nudges
-        }},
-        upsert=True
-    )
-
-def get_user_nudges(user_id):
-    user = get_user(user_id)
-    if user and "custom_nudges" in user and user["custom_nudges"]:
-        return user["custom_nudges"]
-    return DEFAULT_NUDGES.get(user["study_topic"], DEFAULT_NUDGES["general"])
-
-async def send_nudge():
-    users = users_collection.find()
-    for user in users:
-        user_id = user["user_id"]
-        first_name = user["first_name"]
-        message = random.choice(get_user_nudges(user_id)).format(name=first_name)
-        try:
-            await bot.send_message(chat_id=user_id, text=message)
-            logging.info(f"Sent nudge to {first_name} ({user_id}): {message}")
-        except Exception as e:
-            logging.error(f"Failed to send nudge to {first_name} ({user_id}): {e}")
-
-async def run_nudger():
-    while True:
-        if within_active_hours():
-            await send_nudge()
-            await asyncio.sleep(random.randint(300, 1800))
-        else:
-            logging.info("Outside active hours. Sleeping for 30 minutes.")
-            await asyncio.sleep(1800)
-
+### 1️⃣ START COMMAND
 async def start(update: Update, context: CallbackContext):
-    user_id = update.message.chat_id
-    first_name = update.message.chat.first_name
-    save_user(user_id, first_name)
-    keyboard = [[
-        InlineKeyboardButton("General 📚", callback_data="settopic_general"),
-        InlineKeyboardButton("Cybersecurity 🛡️", callback_data="settopic_cybersecurity")
-    ]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    user = update.effective_user
+    chat_id = update.message.chat_id
+
+    user_data = {
+        "first_name": user.first_name,
+        "username": user.username,
+        "chat_id": chat_id,
+        "study_type": "general",
+        "nudge_frequency": (5, 30)
+    }
+
+    # Check if user exists
+    existing_user = users_collection.find_one({"username": user.username})
+    if not existing_user:
+        users_collection.insert_one(user_data)
+        logging.info(f"New user added: {user_data}")
+
     await update.message.reply_text(
-        f"🚀 NeuroNudge Bot activated! Welcome, {first_name}! You'll now receive study nudges between 9AM-5PM SGT every 5-30 mins.\n\n"
-        "Choose your study focus:",
-        reply_markup=reply_markup
+        f"Hi {user.first_name}, welcome to NeuroNudge! 🚀\n"
+        "I will send you study nudges throughout the day.\n"
+        "Use /help to see available commands."
     )
-    logging.info(f"User {first_name} ({user_id}) subscribed with default settings.")
 
+
+### 2️⃣ HELP COMMAND
+async def help_command(update: Update, context: CallbackContext):
+    help_text = (
+        "📌 *NeuroNudgeBot Commands*\n"
+        "/start - Activate the bot\n"
+        "/setstudy <cybersecurity/general> - Choose study focus\n"
+        "/setfrequency <min> <max> - Set nudge frequency (mins)\n"
+        "/status - View current settings\n"
+        "/stop - Stop receiving nudges\n"
+    )
+    await update.message.reply_text(help_text, parse_mode="Markdown")
+
+
+### 3️⃣ GET USER SETTINGS
+def get_user_settings(username):
+    user = users_collection.find_one({"username": username})
+    if user:
+        return user["study_type"], user["nudge_frequency"]
+    return "general", (5, 30)
+
+
+### 4️⃣ SET STUDY TYPE
+async def set_study_type(update: Update, context: CallbackContext):
+    user = update.effective_user
+    if not context.args:
+        await update.message.reply_text("Usage: /setstudy <cybersecurity/general>")
+        return
+
+    study_type = context.args[0].lower()
+    if study_type not in ["cybersecurity", "general"]:
+        await update.message.reply_text("Invalid type. Choose 'cybersecurity' or 'general'.")
+        return
+
+    users_collection.update_one({"username": user.username}, {"$set": {"study_type": study_type}})
+    await update.message.reply_text(f"Your study type has been updated to {study_type} ✅")
+
+
+### 5️⃣ SET NUDGE FREQUENCY
+async def set_nudge_frequency(update: Update, context: CallbackContext):
+    user = update.effective_user
+    try:
+        min_freq, max_freq = map(int, context.args)
+        if min_freq < 1 or max_freq > 120 or min_freq > max_freq:
+            raise ValueError
+
+        users_collection.update_one({"username": user.username}, {"$set": {"nudge_frequency": (min_freq, max_freq)}})
+        await update.message.reply_text(f"Nudge frequency updated to {min_freq}-{max_freq} minutes ✅")
+
+    except ValueError:
+        await update.message.reply_text("Invalid input. Use: /setfrequency <min> <max> (1-120 mins)")
+
+
+### 6️⃣ SEND NUDGE (RANDOM INTERVALS)
+async def send_nudge(context: CallbackContext):
+    job = context.job
+    username = job.data["username"]
+    chat_id = job.chat_id
+
+    study_type, _ = get_user_settings(username)
+
+    current_time = datetime.now(SGT).hour
+    if not (ACTIVE_HOURS[0] <= current_time < ACTIVE_HOURS[1]):
+        logging.info("Outside active hours. Sleeping...")
+        return
+
+    message = random.choice(STUDY_MESSAGES[study_type])
+    await context.bot.send_message(chat_id=chat_id, text=f"NeuroNudge says: {message} 🚀")
+
+
+### 7️⃣ START NUDGES
+async def start_nudges(update: Update, context: CallbackContext):
+    user = update.effective_user
+    chat_id = update.message.chat_id
+
+    _, nudge_frequency = get_user_settings(user.username)
+
+    min_time, max_time = nudge_frequency
+    delay = random.randint(min_time, max_time) * 60
+
+    context.job_queue.run_repeating(send_nudge, interval=delay, first=5, chat_id=chat_id, name=str(chat_id),
+                                    data={"username": user.username})
+
+    await update.message.reply_text(f"✅ Nudges activated! Frequency: {min_time}-{max_time} mins")
+
+
+### 8️⃣ STOP NUDGES
 async def stop(update: Update, context: CallbackContext):
-    user_id = update.message.chat_id
-    users_collection.delete_one({"user_id": user_id})
-    await update.message.reply_text("❌ You've unsubscribed from NeuroNudge nudges. Type /start to re-enable.")
-    logging.info(f"User ({user_id}) unsubscribed.")
+    jobs = context.job_queue.get_jobs_by_name(str(update.message.chat_id))
+    for job in jobs:
+        job.schedule_removal()
 
-async def button_callback(update: Update, context: CallbackContext):
-    query = update.callback_query
-    user_id = query.message.chat_id
-    topic = query.data.split("_")[1]
-    save_user(user_id, get_user(user_id)["first_name"], study_topic=topic)
-    await query.answer()
-    await query.message.reply_text(f"✅ You've set your study focus to {topic.capitalize()}.")
-    logging.info(f"User ({user_id}) set study topic to {topic}.")
+    await update.message.reply_text("🚫 Nudges stopped.")
 
-app.add_handler(CommandHandler("start", start))
-app.add_handler(CommandHandler("stop", stop))
-app.add_handler(CallbackQueryHandler(button_callback))
+
+### 9️⃣ CHECK USER STATUS
+async def status(update: Update, context: CallbackContext):
+    user = update.effective_user
+    study_type, nudge_frequency = get_user_settings(user.username)
+    
+    await update.message.reply_text(
+        f"📊 *Your Settings:*\n"
+        f"🔹 Study Type: {study_type.capitalize()}\n"
+        f"🔹 Nudge Frequency: {nudge_frequency[0]}-{nudge_frequency[1]} mins",
+        parse_mode="Markdown"
+    )
+
+
+### 🔟 BOT SETUP
+def main():
+    app = Application.builder().token(TOKEN).build()
+
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("help", help_command))
+    app.add_handler(CommandHandler("setstudy", set_study_type))
+    app.add_handler(CommandHandler("setfrequency", set_nudge_frequency))
+    app.add_handler(CommandHandler("startnudges", start_nudges))
+    app.add_handler(CommandHandler("stop", stop))
+    app.add_handler(CommandHandler("status", status))
+
+    app.run_polling()
+
 
 if __name__ == "__main__":
-    logging.info("NeuroNudgeBot started.")
-    app.run_polling()
-    asyncio.run(run_nudger())
+    main()
