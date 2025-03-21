@@ -212,7 +212,24 @@ async def send_nudge(context: CallbackContext):
         await context.bot.send_message(chat_id=chat_id, text=f"NeuroNudge says: {message} 🚀")
 
 # Register bot
+# Update all existing users with new fields if missing
+def initialize_user_fields():
+    users_collection.update_many(
+        {},
+        {
+            "$setOnInsert": {
+                "custom_messages": [],
+                "nudge_mode": "default"
+            },
+            "$set": {
+                "custom_messages": [],
+                "nudge_mode": "default"
+            }
+        }
+    )
+
 def main():
+    initialize_user_fields()
     app = Application.builder().token(TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
