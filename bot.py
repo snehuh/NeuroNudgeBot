@@ -1,52 +1,71 @@
-import time
+import os
+import asyncio
 import random
 import logging
-from telegram import Bot
+from datetime import datetime, time
 from dotenv import load_dotenv
-import os
+from telegram import Bot
 
-''' Neuro Nudge Bot: The Bot that reminds you of you of your tasks at random intervals to surprise you
-
-This is the first version of this bot and it is very static with the bare minimum functions
-
-To be done later:
-1. Communicate to bot what your task is 
-2. Create custom messages to remind you
-3. Increase or decrease frequency - total number 
-4. Add any images along with the message
-
-And more!
-
-'''
-
+# Load environment variables
 load_dotenv()
 
+# Get environment variables
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-TELEGRAN_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
-# Messages for random nudges
-NUDGES = [
-    "Hey! Have you worked on your cybersecurity studies today? 👀",
-    "Quick check-in! Did you complete any TryHackMe rooms yet? 💻",
-    "Don't forget about your CCNA/CompTIA Security+ progress! Keep pushing! 🚀",
-    "Time for a small study session? Even 15 minutes counts! 📖",
-    "Hey, just a friendly nudge—keep your momentum going! 💡",
-    "How’s your cybersecurity portfolio coming along? Need help? 🎯"
-]
-
-#logging
-logging.basicConfig(level=logging.INFO)
+# Initialize the bot
 bot = Bot(token=TELEGRAM_BOT_TOKEN)
 
-def send_nudge():
-    message = random.choice(NUDGES)
-    bot.send_message(chat_id=TELEGRAN_CHAT_ID, text=message)
-    logging.info(f"Sent nudge: {message}")
+# Set up logging to file
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    handlers=[
+        logging.FileHandler("neuronudgebot.log"),
+        logging.StreamHandler()
+    ]
+)
 
+# Nudge messages
+NUDGES = [
+    "Hey Sneha! Have you reviewed a TryHackMe room today? 🕵️‍♀️",
+    "Reminder: CCNA and Security+ won't study themselves 😅",
+    "Time to flex those cyber muscles 💪 Hack something small today!",
+    "Don't forget to update your cybersecurity portfolio 🧠",
+    "Feeling stuck? Do 15 mins of TryHackMe — small wins add up!",
+    "NeuroNudge says: go conquer a THM challenge 🚀",
+    "Review your notes or flashcards – tiny effort, big reward! 🧠",
+    "Ping! Let’s get one thing done for your future self 👩‍💻"
+]
+
+# Define active hours
+START_HOUR = 9
+END_HOUR = 17
+
+def within_active_hours():
+    now = datetime.now().time()
+    return time(START_HOUR, 0) <= now <= time(END_HOUR, 0)
+
+async def send_nudge():
+    message = random.choice(NUDGES)
+    try:
+        await bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=message)
+        logging.info(f"Sent nudge: {message}")
+    except Exception as e:
+        logging.error(f"Failed to send nudge: {e}")
+
+async def run_nudger():
+    while True:
+        if within_active_hours():
+            await send_nudge()
+            # Wait between 2 to 4 hours randomly
+            wait_time = random.randint(7200, 14400)
+        else:
+            logging.info("Outside active hours. Sleeping for 30 minutes.")
+            wait_time = 1800  # 30 minutes
+
+        await asyncio.sleep(wait_time)
 
 if __name__ == "__main__":
-    while True:
-        #sends a nudge every 0.5 to 2 hours randomly
-        wait_time = random.randint(1800,7200)  #seconds
-        send_nudge()
-        time.sleep(wait_time)
+    logging.info("NeuroNudgeBot started.")
+    asyncio.run(run_nudger())
