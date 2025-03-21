@@ -259,22 +259,23 @@ async def start_nudges(update: Update, context: CallbackContext):
         await update.message.reply_text("User not found. Please use /start first.")
         return
 
-    _, nudge_frequency = user_doc.get("study_type", "general"), user_doc.get("nudge_frequency", (5, 30))
+    # Extract study type, nudge frequency, and mode
+    study_type = user_doc.get("study_type", "general")
+    nudge_frequency = user_doc.get("nudge_frequency", (5, 30))
     min_time, max_time = nudge_frequency
-    delay = random.randint(min_time, max_time) * 60
 
-    # Register future nudges
+    # Schedule the nudges to repeat with random delay
+    delay = random.randint(min_time, max_time) * 60
     context.job_queue.run_repeating(
         send_nudge, interval=delay, first=5, chat_id=chat_id,
         name=str(chat_id), data={"username": username}
     )
 
-    # Send first nudge immediately
-    study_type = user_doc.get("study_type", "general")
+    # Prepare the first nudge message immediately
     mode = user_doc.get("nudge_mode", "default")
     custom_msgs = user_doc.get("custom_messages", [])
 
-    messages = []
+    # Determine which nudge messages to use based on mode
     if mode == "custom" and custom_msgs:
         messages = custom_msgs
     elif mode == "mixed" and custom_msgs:
@@ -282,10 +283,12 @@ async def start_nudges(update: Update, context: CallbackContext):
     else:
         messages = STUDY_MESSAGES[study_type]
 
+    # Pick the first nudge message
     first_nudge = random.choice(messages) if messages else "Let's get started with a study session!"
 
+    # Send the first nudge immediately
     await update.message.reply_text(
-        f"✅ Nudges activated! Frequency: {min_time}-{max_time} mins"
+        f"✅ Nudges activated! Frequency: {min_time}-{max_time} mins\n"
         f"NeuroNudge says: {first_nudge} 🚀"
     )
 
