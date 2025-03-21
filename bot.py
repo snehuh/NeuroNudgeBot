@@ -12,7 +12,7 @@ from telegram.ext import (
 )
 
 # Load environment variables
-load_dotenv()
+load_dotenv(".env.dev")
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 MONGO_URI = os.getenv("MONGODB_URI")
 
@@ -76,7 +76,7 @@ async def start(update: Update, context: CallbackContext):
 # Command: /help
 async def help_command(update: Update, context: CallbackContext):
     help_text = (
-        "📌 *NeuroNudgeBot Commands*\n"
+        "📌 *DEV NeuroNudgeBot Commands*\n"
         "/start - Activate the bot\n"
         "/setstudy - Choose study focus (buttons)\n"
         "/setfrequency - Choose nudge frequency (buttons)\n"
