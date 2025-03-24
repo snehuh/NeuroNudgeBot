@@ -1,5 +1,3 @@
-# storage.py
-
 from pymongo import MongoClient
 import os
 import asyncio
@@ -25,7 +23,9 @@ def _save_user_sync(user_id, data):
 def _update_user_field_sync(user_id, field, value):
     users.update_one(
         {"user_id": user_id},
-        {"$set": {field: value}}
+        {"$set": {field: value}},
+        upsert=True
+        
     )
 
 # Async wrappers
