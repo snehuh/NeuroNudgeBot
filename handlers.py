@@ -189,14 +189,14 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="Markdown"
     )
 
-def register_menu_commands(app):
+async def register_menu_commands(app):
     app.add_handler(CommandHandler("menu", menu))
     app.add_handler(CommandHandler("help", help_cmd))
     app.add_handler(CommandHandler("startnudges", startnudges))
     app.add_handler(CommandHandler("stopnudges", stopnudges))
     app.add_handler(CallbackQueryHandler(handle_view_buttons, pattern="^view_"))
 
-    app.bot.set_my_commands([
+    await app.bot.set_my_commands([
         BotCommand("start", "Begin setting up your nudges"),
         BotCommand("menu", "Open your personal menu"),
         BotCommand("startnudges", "Activate your nudge schedule"),
