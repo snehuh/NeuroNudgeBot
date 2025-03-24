@@ -1,5 +1,3 @@
-#handlers.py
-
 from telegram import (
     Update,
     InlineKeyboardButton,
@@ -55,13 +53,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def handle_category_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()  # Respond early
+    await query.answer()
     user_id = query.from_user.id
     selected = query.data.replace("category_", "")
-    save_user(user_id, {
+
+    await save_user(user_id, {
         "user_id": user_id,
         "category": selected,
-        "first_name": query.from_user.first_name
+        "first_name": query.from_user.first_name,
+        "username": query.from_user.username
     })
 
     keyboard = [
@@ -81,21 +81,16 @@ async def handle_category_selection(update: Update, context: ContextTypes.DEFAUL
 
 async def handle_time_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()  # Respond early
+    await query.answer()
     user_id = query.from_user.id
     selected = query.data.replace("time_", "")
-    update_user_field(user_id, "time_range", selected)
+
+    await update_user_field(user_id, "time_range", selected)
 
     keyboard = [
-        [
-            InlineKeyboardButton(frequencies["short"], callback_data="freq_short")
-        ],
-        [
-            InlineKeyboardButton(frequencies["medium"], callback_data="freq_medium")
-        ],
-        [
-            InlineKeyboardButton(frequencies["long"], callback_data="freq_long")
-        ]
+        [InlineKeyboardButton(frequencies["short"], callback_data="freq_short")],
+        [InlineKeyboardButton(frequencies["medium"], callback_data="freq_medium")],
+        [InlineKeyboardButton(frequencies["long"], callback_data="freq_long")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await query.edit_message_text(
@@ -107,10 +102,11 @@ async def handle_time_selection(update: Update, context: ContextTypes.DEFAULT_TY
 
 async def handle_frequency_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()  # Respond early
+    await query.answer()
     user_id = query.from_user.id
     selected = query.data.replace("freq_", "")
-    update_user_field(user_id, "frequency", selected)
+
+    await update_user_field(user_id, "frequency", selected)
 
     await query.edit_message_text(
         f"✅ You're all set!\n\nUse /startnudges to begin your nudges any time 🚀"
@@ -119,9 +115,9 @@ async def handle_frequency_selection(update: Update, context: ContextTypes.DEFAU
 
 async def handle_view_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()  # Respond early
+    await query.answer()
     user_id = query.from_user.id
-    user = get_user(user_id)
+    user = await get_user(user_id)
 
     if not user:
         await query.edit_message_text("⚠️ No settings found. Please use /start to configure first.")
@@ -151,14 +147,41 @@ async def handle_view_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE
         frequency = display_map.get(freq, "Not set")
         await query.edit_message_text(f"⚙️ Your frequency is: *{frequency}*", parse_mode="Markdown")
 
+
+
 async def startnudges(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    user = get_user(user_id)
-    if not user or not all(k in user for k in ["category", "time_range", "frequency"]):
-        await update.message.reply_text("⚠️ You haven't finished setup. Please use /start to configure first.")
-        return
+    user = await get_user(user_id)
+
+    # if no user record, create one with defaults
+    user = {
+        "user_id": user_id,
+        "first_name": update.effective_user.first_name,
+        "category": "general",
+        "time_range": "fullday",
+        "frequency": "medium"
+    }
+    await save_user(user_id, user)
+
+    # defaults
+    defaults = {
+        "category": "general",
+        "time_range": "fullday",
+        "frequency": "medium"       
+    }
+
+    updated = False
+    for key, val in defaults.items():
+        if key not in user:
+            user[key] = val
+            await update_user_field(user_id, key, val)
+
+    if updated:
+        await update.message.reply_text("ℹ️ You hadn't completed setup — so we filled in some defaults for you.")
+
     await update.message.reply_text("✅ Nudges activated! I’ll ping you randomly within your set window.")
     context.job_queue.run_once(send_nudge, when=5, chat_id=user_id)
+
 
 async def stopnudges(update: Update, context: ContextTypes.DEFAULT_TYPE):
     current_jobs = context.job_queue.get_jobs_by_chat_id(update.effective_user.id)
