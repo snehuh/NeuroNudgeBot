@@ -1,3 +1,5 @@
+#handlers.py
+
 from telegram import (
     Update,
     InlineKeyboardButton,
@@ -53,7 +55,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def handle_category_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    await query.answer()  # Respond early
     user_id = query.from_user.id
     selected = query.data.replace("category_", "")
     save_user(user_id, {
@@ -79,7 +81,7 @@ async def handle_category_selection(update: Update, context: ContextTypes.DEFAUL
 
 async def handle_time_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    await query.answer()  # Respond early
     user_id = query.from_user.id
     selected = query.data.replace("time_", "")
     update_user_field(user_id, "time_range", selected)
@@ -105,7 +107,7 @@ async def handle_time_selection(update: Update, context: ContextTypes.DEFAULT_TY
 
 async def handle_frequency_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    await query.answer()  # Respond early
     user_id = query.from_user.id
     selected = query.data.replace("freq_", "")
     update_user_field(user_id, "frequency", selected)
@@ -115,10 +117,9 @@ async def handle_frequency_selection(update: Update, context: ContextTypes.DEFAU
     )
     return ConversationHandler.END
 
-# View profile fields
 async def handle_view_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    await query.answer()  # Respond early
     user_id = query.from_user.id
     user = get_user(user_id)
 
@@ -150,7 +151,6 @@ async def handle_view_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE
         frequency = display_map.get(freq, "Not set")
         await query.edit_message_text(f"⚙️ Your frequency is: *{frequency}*", parse_mode="Markdown")
 
-# Start/stop nudges
 async def startnudges(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     user = get_user(user_id)
@@ -166,7 +166,6 @@ async def stopnudges(update: Update, context: ContextTypes.DEFAULT_TYPE):
         job.schedule_removal()
     await update.message.reply_text("🛑 Nudges stopped.")
 
-# Menu and help
 async def menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [
