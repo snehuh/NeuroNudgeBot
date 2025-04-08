@@ -1,4 +1,4 @@
-# NeuroNudgeBot 🤖
+# NeuroNudgeBot 🤖 (In Development)
 
 A personal Telegram bot that sends motivational cybersecurity study nudges during working hours (9AM–5PM). Built with Python, async, and love.
 
