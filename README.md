@@ -32,5 +32,15 @@ Want to get daily productivity nudges? Follow these steps:
 
 ✅ **Personalized Nudges:**  
 Your name will be used in the nudges to keep it personal.  
+Your can add your own nudges.  
 
+
+## Features to come
+
+1️⃣ **Menu Card**  
+2️⃣ **Collaboration & Community Support** 
+
+and many more! 
+
+© 2025 With Anu
 ---
