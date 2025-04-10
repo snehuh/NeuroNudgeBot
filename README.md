@@ -1,5 +1,5 @@
 # NeuroNudgeBot 🤖 (In Development) 
-### MVP for NudgeByAnu - A Product of WithAnu.com
+### MVP for NudgeByAnu - A Product of [WithAnu.com](WithAnu.com)
 
 A personal Telegram bot that sends motivational cybersecurity study nudges during working hours (9AM–5PM). Built with Python, async, and love.
 
