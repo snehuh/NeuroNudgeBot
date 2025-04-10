@@ -1,6 +1,13 @@
-# NeuroNudgeBot 🤖 (In Development)
+# NeuroNudgeBot 🤖 (In Development) by WithAnu.com
 
 A personal Telegram bot that sends motivational cybersecurity study nudges during working hours (9AM–5PM). Built with Python, async, and love.
+
+## What is special about this app?
+I found that I'm subconciously ignoring scheduled reminders as they are fixed and I can already forsee the notification/reminder. 
+
+For Example: I want to activate my bot from 9am to 5pm. I choose to receive an alert anytime between 15min-30min intervals.
+
+This brings an element of *suspence, mystery, and surprise*! Helping you get to your goals, one nudge at a time.
 
 ## Features
 - Sends randomized study nudges
