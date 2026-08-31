@@ -1,7 +1,6 @@
-# NeuroNudgeBot 🤖 (In Development) 
-### MVP for NudgeByAnu - A Product of [WithAnu](https://withanu.com/)
+# NeuroNudgeBot 🤖 (In Development)
 
-A personal Telegram bot that sends motivational cybersecurity study nudges during working hours (9AM–5PM). Built with Python, async, and love.
+A personal Telegram bot that sends motivational cybersecurity study nudges during working hours (9AM–5PM). Built with Python and async.
 
 ## What is special about this app?
 I found that I'm subconciously ignoring scheduled reminders as they are fixed and I can already forsee the notification/reminder. 
@@ -41,6 +40,4 @@ Your can add your own nudges.
 2️⃣ **Collaboration & Community Support** 
 
 and many more! 
-
-© 2025 With Anu
 ---
